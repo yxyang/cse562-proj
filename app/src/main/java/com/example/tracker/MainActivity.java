@@ -32,7 +32,8 @@ public class MainActivity extends AppCompatActivity {
     final int SAMPLE_RATE = 44100;
     final int BUFFER_SIZE = 1764;
     final double SWEEP_TIME_SECS = 0.04;
-    final double MIN_FREQ = 17000;
+    final double MIN_FREQ_1 = 17000;
+    final double MIN_FREQ_2 = 22500;
     final double BANDWIDTH = 2500;
 
     RecorderStereo recorder = null;
@@ -48,6 +49,8 @@ public class MainActivity extends AppCompatActivity {
     double timeSecs = 0;
     double timeOffset = 0;
     double maxDistance;
+    double interSpeakerDistance = 0.33; //(distance between macbook speakers in meters)
+
     private final Handler mHandler = new Handler();
     private Runnable updatePlot;
     DataPoint[] fftMagDps = new DataPoint[]{};
@@ -61,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
             // Perform FFT
             double[] double_signal = new double[BUFFER_SIZE];
             for (int i = 0; i < BUFFER_SIZE; i++) {
-                double_signal[i] = data[i] * hanningWindow(i) * signal(timeSecs - timeOffset);
+                double_signal[i] = data[i] * hanningWindow(i) * signal(timeSecs - timeOffset, MIN_FREQ_1);
                 timeSecs += 1. / SAMPLE_RATE;
             }
             doubleFFT_1D.realForward(double_signal);
@@ -122,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
             double time_secs = 0;
             for (int i = 0; i < BUFFER_SIZE; i++) {
                 recv_signal[i] = data[i] * 1. / 10000;
-                transmit_signal[i] = signal(time_secs);
+                transmit_signal[i] = signal(time_secs, MIN_FREQ_1);
                 time_secs += 1. / SAMPLE_RATE;
             }
             doubleFFT_1D.realForward(recv_signal);
@@ -148,7 +151,7 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private double signal(double time_secs) {
+    private double signal(double time_secs, double MIN_FREQ) {
         double time_in_cycle = time_secs % SWEEP_TIME_SECS;
         return Math.sin(2 * Math.PI * MIN_FREQ * time_in_cycle +
                 Math.PI * BANDWIDTH * time_in_cycle * time_in_cycle / SWEEP_TIME_SECS);

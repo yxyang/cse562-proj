@@ -3,15 +3,14 @@ from math import sin, pi
 import wave
 import random
 import numpy as np
-import sounddevice as sd
 
 
 RATE=44100
 total_time_secs = 100 #200
 sweep_time_secs = 0.04
 sampling_freq = 44100
-freq_min_left = 17000
-freq_min_right = 22500
+freq_min_left = 16000 #17000
+freq_min_right = 19000 #20000
 bandwidth = 2500
 
 #Generate chirps
@@ -26,7 +25,7 @@ wave_right = 10000 * np.sin(2 * np.pi * freq_min_right * time_in_period +
 
 
 ## GENERATE MONO FILES ##
-wv = wave.open('mono_17k.wav', 'w')
+wv = wave.open('mono_16k.wav', 'w')
 wv.setparams((1, 2, RATE, 0, 'NONE', 'not compressed'))
 maxVol=2**15-1.0 #maximum amplitude
 wvData=""
@@ -36,7 +35,7 @@ wv.writeframes(wvData)
 wv.close()
 
 
-wv = wave.open('mono_22k.wav', 'w')
+wv = wave.open('mono_19k.wav', 'w')
 wv.setparams((1, 2, RATE, 0, 'NONE', 'not compressed'))
 # maxVol=2**15-1.0 #maximum amplitude
 wvData=""
