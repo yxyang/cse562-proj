@@ -32,8 +32,8 @@ public class MainActivity extends AppCompatActivity {
     final int SAMPLE_RATE = 44100;
     final int BUFFER_SIZE = 1764;
     final double SWEEP_TIME_SECS = 0.04;
-    final double MIN_FREQ_1 = 17000;
-    final double MIN_FREQ_2 = 22500;
+    final double MIN_FREQ_1 = 16000; //17000;
+    final double MIN_FREQ_2 = 19000; //22500;
     final double BANDWIDTH = 2500;
 
     RecorderStereo recorder = null;
@@ -47,7 +47,8 @@ public class MainActivity extends AppCompatActivity {
     DoubleFFT_1D doubleFFT_1D = null;
     long startTime = System.currentTimeMillis();
     double timeSecs = 0;
-    double timeOffset = 0;
+    double timeOffset1 = 0;
+    double timeOffset2 = 0;
     double maxDistance;
     double interSpeakerDistance = 0.33; //(distance between macbook speakers in meters)
 
@@ -62,21 +63,23 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void call(short[] data) {
             // Perform FFT
-            double[] double_signal = new double[BUFFER_SIZE];
+            double[] double_signal_1 = new double[BUFFER_SIZE];
+            double[] double_signal_2 = new double[BUFFER_SIZE];
             for (int i = 0; i < BUFFER_SIZE; i++) {
-                double_signal[i] = data[i] * hanningWindow(i) * signal(timeSecs - timeOffset, MIN_FREQ_1);
+                double_signal_1[i] = data[i] * hanningWindow(i) * signal(timeSecs - timeOffset1, MIN_FREQ_1);
+                double_signal_2[i] = data[i] * hanningWindow(i) * signal(timeSecs - timeOffset1, MIN_FREQ_2);
                 timeSecs += 1. / SAMPLE_RATE;
             }
-            doubleFFT_1D.realForward(double_signal);
-
+            doubleFFT_1D.realForward(double_signal_1);
+            doubleFFT_1D.realForward(double_signal_2);
             // Update Plot
             lock.lock();
             fftMagDps = new DataPoint[BUFFER_SIZE / 2];
             double[] distances = new double[BUFFER_SIZE / 2];
             double[] magnitudes = new double[BUFFER_SIZE / 2];
             for (int i = 0; i < BUFFER_SIZE / 2; i++) {
-                double re = double_signal[i * 2];
-                double im = double_signal[i * 2 + 1];
+                double re = double_signal_1[i * 2];
+                double im = double_signal_1[i * 2 + 1];
                 double magnitude = Math.sqrt(re * re + im * im) / 32768;
                 double freq = (double) i * SAMPLE_RATE / BUFFER_SIZE;
                 double distance = freq * 340 * SWEEP_TIME_SECS / BANDWIDTH;
@@ -126,7 +129,9 @@ public class MainActivity extends AppCompatActivity {
             for (int i = 0; i < BUFFER_SIZE; i++) {
                 recv_signal[i] = data[i] * 1. / 10000;
                 transmit_signal[i] = signal(time_secs, MIN_FREQ_1);
+//                transmit_signal[i] = signal(time_secs, MIN_FREQ_2);
                 time_secs += 1. / SAMPLE_RATE;
+
             }
             doubleFFT_1D.realForward(recv_signal);
             doubleFFT_1D.realForward(transmit_signal);
@@ -143,10 +148,10 @@ public class MainActivity extends AppCompatActivity {
             for (int i = 0; i < BUFFER_SIZE / 2; i++) {
                 if (cross_signal[i] > max_correlation) {
                     max_correlation = cross_signal[i];
-                    timeOffset = i * 1. / SAMPLE_RATE;
+                    timeOffset1 = i * 1. / SAMPLE_RATE;
                 }
             }
-            Log.d("Calibration", "Offset: " + timeOffset);
+            Log.d("Calibration", "Offset: " + timeOffset1);
             lock.unlock();
         }
     };
@@ -161,6 +166,12 @@ public class MainActivity extends AppCompatActivity {
         return 0.5 * (1 - Math.cos(2 * Math.PI * idx) / (BUFFER_SIZE - 1));
     }
 
+//    public void smoothAmplitudes(){
+//        for (int i = 0; i < fft.specSize(); ++i) {
+//            float smoothed_amp = SMOOTHING_ALPHA * fft.getBand(i) + (1 - SMOOTHING_ALPHA) * prev_freqs[i];
+//            fft.setBand(i, smoothed_amp);
+//        }
+//    }
     private void checkRecordPermission() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -228,7 +239,7 @@ public class MainActivity extends AppCompatActivity {
                 long time = System.currentTimeMillis() - startTime;
                 maxDistanceSeries.appendData(new DataPoint(time, maxDistance), true, 400);
                 mHandler.postDelayed(this, 40);
-                calibrationResult.setText("Calibrated Offset: " + timeOffset);
+                calibrationResult.setText("Calibrated Offset: " + timeOffset1);
                 lock.unlock();
             }
         };
